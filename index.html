@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A Question For You</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    background: url('AJ.jpg.jpeg') center/cover no-repeat fixed;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: none;
+    pointer-events: none;
+  }
+
+  .content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding-bottom: 4px;
+  }
+
+  .question {
+    font-size: clamp(0.95rem, 2vw, 1.3rem);
+    color: #58585b;
+    text-shadow: none;
+    margin-bottom: 2px;
+    letter-spacing: .5px;
+  }
+
+  .buttons {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    align-items: center;
+    min-height: 70px;
+    position: relative;
+  }
+
+  .btn {
+    padding: 10px 36px;
+    font-size: clamp(0.8rem, 1.8vw, 1rem);
+    font-family: inherit;
+    border: 1px solid rgba(0,0,0,.25);
+    background: rgba(255,255,255,.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #58585b;
+    transition: all .2s ease;
+  }
+
+  .btn:hover {
+    background: rgba(0,0,0,.08);
+    transform: scale(1.04);
+  }
+
+  .btn-yes {}
+
+  .btn-no {}
+
+  .yes-message {
+    display: none;
+    font-size: clamp(3.6rem, 10vw, 6.4rem);
+    font-weight: 300;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    color: #2e7d32;
+    animation: popIn .5s ease-out;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: auto;
+    text-align: center;
+    z-index: 5;
+  }
+
+  @keyframes popIn {
+    0%   { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+    70%  { transform: translate(-50%, -50%) scale(1.15); }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+
+  @keyframes shimmer {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  canvas#confetti {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="overlay"></div>
+
+<div class="content" id="mainContent">
+  <p class="question">So… would you like to build something with me?</p>
+  <div class="buttons">
+    <button class="btn btn-yes" id="yesBtn">Yes</button>
+    <button class="btn btn-no"  id="noBtn">No</button>
+  </div>
+</div>
+
+<div class="yes-message" id="yesMsg">This feels like a good start!</div>
+
+<canvas id="confetti"></canvas>
+
+<script>
+const noBtn  = document.getElementById('noBtn');
+const yesBtn = document.getElementById('yesBtn');
+const yesMsg = document.getElementById('yesMsg');
+const mainContent = document.getElementById('mainContent');
+
+let placeholder = null;
+function escapeNo() {
+  if (!placeholder) {
+    placeholder = document.createElement('span');
+    placeholder.style.display = 'inline-block';
+    placeholder.style.width = noBtn.offsetWidth + 'px';
+    placeholder.style.height = noBtn.offsetHeight + 'px';
+    placeholder.style.visibility = 'hidden';
+    noBtn.parentNode.insertBefore(placeholder, noBtn);
+  }
+
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const bw = noBtn.offsetWidth;
+  const bh = noBtn.offsetHeight;
+
+  const yesRect = yesBtn.getBoundingClientRect();
+  const boxWidth = 1000;
+  const boxLeft = (vw - boxWidth) / 2;
+  const topBound = yesRect.top;
+  const pad = 10;
+
+  let x, y, tries = 0;
+  do {
+    x = boxLeft + pad + Math.random() * (boxWidth - bw - pad * 2);
+    y = topBound + Math.random() * (vh - topBound - bh - pad);
+    tries++;
+  } while (tries < 50 &&
+    x < yesRect.right + 20 &&
+    x + bw > yesRect.left - 20 &&
+    y < yesRect.bottom + 20 &&
+    y + bh > yesRect.top - 20);
+
+  noBtn.style.position = 'fixed';
+  noBtn.style.left = x + 'px';
+  noBtn.style.top  = y + 'px';
+  noBtn.style.transition = 'none';
+  noBtn.style.zIndex = '10';
+}
+
+function sendNotification(answer) {
+  fetch('https://api.web3forms.com/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({
+      access_key: '60b81d1a-1736-4f53-b48d-70339bae0f97',
+      subject: 'Answer: ' + answer,
+      message: 'They clicked ' + answer + '!'
+    })
+  }).catch(() => {});
+}
+
+noBtn.addEventListener('mouseenter', escapeNo);
+noBtn.addEventListener('touchstart', (e) => { e.preventDefault(); escapeNo(); }, { passive: false });
+noBtn.addEventListener('click', () => { sendNotification('No'); escapeNo(); });
+
+yesBtn.addEventListener('click', () => {
+  sendNotification('Yes');
+  mainContent.style.display = 'none';
+  noBtn.style.display = 'none';
+  yesMsg.style.display = 'block';
+  launchConfetti();
+});
+
+/* ── Confetti ── */
+const canvas = document.getElementById('confetti');
+const ctx = canvas.getContext('2d');
+let particles = [];
+let animFrame;
+
+function resize() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+const COLORS = [
+  '#ff2d6b','#ff6b8a','#ffb347','#ffe066',
+  '#66e0ff','#a566ff','#66ff99','#ff66d9',
+  '#FFD700','#ff4757','#1e90ff','#ffa502',
+  '#00e676','#e040fb','#00bcd4','#ff7043'
+];
+
+class Particle {
+  constructor() {
+    this.x  = Math.random() * canvas.width;
+    this.y  = Math.random() * canvas.height * -1;
+    this.w  = 6 + Math.random() * 8;
+    this.h  = 4 + Math.random() * 6;
+    this.vx = (Math.random() - .5) * 4;
+    this.vy = 2 + Math.random() * 4;
+    this.rot = Math.random() * 360;
+    this.rv = (Math.random() - .5) * 12;
+    this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+    this.life = 1;
+    this.decay = .003 + Math.random() * .004;
+  }
+  update() {
+    this.x   += this.vx;
+    this.vy  += 0.04;
+    this.y   += this.vy;
+    this.rot += this.rv;
+    this.life -= this.decay;
+  }
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rot * Math.PI / 180);
+    ctx.globalAlpha = Math.max(this.life, 0);
+    ctx.fillStyle = this.color;
+    ctx.fillRect(-this.w / 2, -this.h / 2, this.w, this.h);
+    ctx.restore();
+  }
+}
+
+function launchConfetti() {
+  for (let i = 0; i < 500; i++) particles.push(new Particle());
+  let waves = 0;
+  const addWave = setInterval(() => {
+    for (let i = 0; i < 250; i++) particles.push(new Particle());
+    if (++waves >= 6) clearInterval(addWave);
+  }, 600);
+  animate();
+}
+
+function animate() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles.forEach(p => { p.update(); p.draw(); });
+  particles = particles.filter(p => p.life > 0);
+  if (particles.length > 0) {
+    animFrame = requestAnimationFrame(animate);
+  }
+}
+</script>
+</body>
+</html>
